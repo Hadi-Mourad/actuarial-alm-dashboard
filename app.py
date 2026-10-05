@@ -205,6 +205,7 @@ def chart_allocation(result: ImmunizationResult) -> go.Figure:
 # Sidebar controls
 # --------------------------------------------------------------------------- #
 st.title("Stochastic ALM & Portfolio Immunization Dashboard")
+st.markdown("Created by Hadi Mourad | Actuarial Science, Western University")
 st.caption(
     "Redington immunization of a guaranteed-annuity liability with a 3-bond universe, stress-tested with "
     "Monte Carlo interest-rate shocks. Financial mathematics, optimisation, corporate finance and "
@@ -326,32 +327,43 @@ if benchmark_label != "None":
 # --------------------------------------------------------------------------- #
 # Metrics bar
 # --------------------------------------------------------------------------- #
+HELP_PV = "Present Value: The current dollar value of future cash flows, discounted to today."
+HELP_DURATION_GAP = (
+    "Measures the difference in interest rate sensitivity. A gap of 0.00 means the portfolio is "
+    "perfectly protected against small, immediate interest rate shifts."
+)
+HELP_CONVEXITY_GAP = (
+    "Measures protection against extreme rate changes. A positive number ensures assets will retain "
+    "value better than liabilities during large, sudden interest rate shocks."
+)
+HELP_VAR = "The maximum expected drop in our surplus under standard market stress."
+HELP_TVAR = (
+    "The average expected loss in extreme disaster scenarios. Regulators use this to ensure financial "
+    "institutions hold enough emergency capital."
+)
+
 st.subheader("Portfolio Key Metrics")
 m1, m2, m3, m4, m5 = st.columns(5)
-m1.metric("PV Liabilities (PV_L)", money(result.pv_liabilities),
-          help="PV_L = sum L_t / (1+y)^t")
+m1.metric("PV Liabilities (PV_L)", money(result.pv_liabilities), help=HELP_PV)
 m2.metric("PV Assets (PV_A)", money(result.pv_assets),
-          delta=f"Surplus {money(result.surplus)}", delta_color="off",
-          help="PV_A = PV_L + target surplus (budget constraint).")
+          delta=f"Surplus {money(result.surplus)}", delta_color="off", help=HELP_PV)
 _dur_gap = 0.0 if abs(result.duration_gap_scaled) < 5e-5 else result.duration_gap_scaled  # avoid "-0.0000"
 m3.metric("Duration gap", f"{_dur_gap:+.4f} yrs",
           delta=f"D_A {result.duration_assets:.3f} vs D_L {result.duration_liabilities:.3f}", delta_color="off",
-          help="(PV_A*D_A - PV_L*D_L) / PV_L. Zero means Redington's first-order condition holds "
-               "(equals D_A - D_L when the target surplus is 0).")
+          help=HELP_DURATION_GAP)
 m4.metric("Convexity gap", f"{result.convexity_gap_scaled:+.2f}",
           delta="Redington satisfied" if result.redington_satisfied else "Condition violated",
           delta_color="normal" if result.redington_satisfied else "inverse",
-          help="(PV_A*C_A - PV_L*C_L) / PV_L. Must be > 0 for the second-order Redington condition.")
+          help=HELP_CONVEXITY_GAP)
 m5.metric("95% TVaR (surplus loss)", money(metrics.tvar_95),
           delta=f"Tail surplus {money(metrics.surplus_at_tvar_95)}", delta_color="off",
-          help="Mean loss, relative to the initial surplus, in the worst 5% of scenarios. "
-               "Negative = surplus still rises in the tail.")
+          help=HELP_TVAR)
 
 s1, s2, s3, s4, s5 = st.columns(5)
 s1.metric("Mean surplus", money(metrics.mean))
 s2.metric("Std dev of surplus", money(metrics.std))
-s3.metric("95% VaR", money(metrics.var_95), help="95th percentile of loss = initial surplus - surplus.")
-s4.metric("99% VaR", money(metrics.var_99))
+s3.metric("95% VaR", money(metrics.var_95), help=HELP_VAR)
+s4.metric("99% VaR", money(metrics.var_99), help=HELP_VAR)
 s5.metric("P(Surplus < 0)", f"{metrics.prob_insolvency:.2%}", help="Empirical probability of insolvency.")
 
 eff_std = effective_shock_std(shock_cfg, y0)
